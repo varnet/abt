@@ -1,0 +1,156 @@
+#!/bin/sh
+#---------------------------------------------------------------------
+# Austere Backup Tool v1.74 by VR /Vasyl Ryndiuk/ <vaux@ukr.net>
+#---------------------------------------------------------------------
+
+appn=$(basename $0 | sed "s/\.sh$//")
+acmd="/bin/tar"
+aopt="cfvz"
+aext="tgz"
+ncmd="/usr/bin/renice"
+ndv="19" # default renice value
+sucmd="/bin/su"
+rdp="base" # root (/) directory pseudo
+dstdir="" # default destination directory
+pw=`pwd`
+alias=`hostname -s`
+dt=`eval date +%Y%m%d`
+preview="" # command preview mode
+
+
+# Preface
+#---------------------------------------------------------------------
+usage() {
+    echo "$appn: Usage: [-n] 19 [-x|-X] file [-o] dir dir dir..."
+    echo "        -h, --help           Show help"
+    echo "        -a, --alias          Specify archive alias (default: hostname)"
+    echo "        -D, --dstdir         Destination directory '/path/to/dir'"
+    echo "        -n, --renice         Change the process priority"
+    echo "        -o, --omitpath       Omit directory full path"
+    echo "        -p, --preview        Preview resulting archiver command"
+    echo "        -X, --exclude-from   Read exclusion from file"
+    echo "        -x, --exclude        Exclude file or directory"
+    exit 1
+}
+
+if [ "$#" -lt 1 ]; then usage; fi
+
+while [ "$1" != '' ]; do
+    case $1 in
+	-a | --alias) als=1 ;;
+	-D | --dstdir) dst=1 ;;
+	-h | --help) usage; exit 0;;
+	-n | --renice) rni=1 ;;
+	-o | --omitpath) ofp=1 ;;
+	-p | --preview) preview='y' ;;
+	-X | --exclude-from) excf=1 ;;
+	-x | --exclude) exc=1 ;;
+	[0-9]*)
+	    if [ "$rni" = 1 ]; then rnv=$1; fi
+	    ;;
+	*) dirs=""
+	    if [ "$als" = 1 ]; then
+		alias=$1;
+		unset als;
+	    elif [ "$dst" = 1 ]; then
+		if [ -d $1 ]; then
+		    dstdir=$1;
+		    unset dst;
+		else
+		    echo "$appn: ERROR: Destination directory '$1' doesn't exist"; exit 0
+		fi
+	    elif [ "$excf" = 1 ]; then
+		if [ -f $1 ]; then
+		    excdirs=" -X "$1;
+		    exfc=`cat $1`
+		    unset excf;
+		else
+		    echo "$appn: ERROR: Exclusion file '$1' doesn't exist"; exit 0
+		fi
+	    elif [ "$exc" = 1 ]; then
+		excdirs=$excdirs" --exclude "$1;
+		exs=$1
+		unset exc;
+	    elif [ -d $1 ]; then
+		if [ ! "$pal" ]; then # Get path alias for archive name
+		    pal=${1#/}
+		    if [ "$pal" = "" ]; then
+			pal=$rdp;
+		    else
+			#pal="${pal//\//_}";
+			pal=$(echo $pal|sed 's/\//_/g')
+		    fi
+		fi
+		if [ "$ofp" = 1 ]; then
+		    # Drop full directory path
+		    path=" -C "$1
+		    cd $1
+		    for e in .* *; do # List dirs for archiving
+			if [ "$e" != ".." ] && [ "$e" != "." ]; then
+			    if [ -d "$e" ] || [ -f "$e" ]; then
+				#echo $e
+				dirs=$dirs" "$e;
+			    fi
+			fi
+		    done
+		    arcp=$arcp" "$path" "$dirs;
+		else
+		    # Include full directory path
+		    if [ $1 = "/" ]; then
+			for e in $1.* $1*; do # List dirs for archiving
+			    if [ "$e" != "$1.." ] && [ "$e" != "$1." ]; then
+				if [ -d "$e" ] || [ -f "$e" ]; then
+				    #echo $e
+				    dirs=$dirs" "$e;
+				fi
+			    fi
+			done
+			arcp=$arcp" "$dirs;
+		    else
+			#shopt -s dotglob # bash only
+			#shopt | grep glob # bash only
+			#for entry in "$search_dir"/* "$work_dir"/*
+			#for e in $1/{.*,*}; do
+			#for e in $1/{.,}*; do
+			#for e in $1/.* *; do
+			for e in $1/* $1/.*; do # List dirs for archiving
+			    if [ "$e" != "$1/.." ] && [ "$e" != "$1/." ]; then
+				if [ -d "$e" ] || [ -f "$e" ]; then
+				    #echo $e
+				    dirs=$dirs" "$e;
+				fi
+			    fi
+			done
+			arcp=$arcp" "$dirs;
+		    fi
+		fi
+	    else
+		echo "$appn: ERROR: Unknown directory \"$1\""
+		exit 0
+	    fi
+    esac
+    shift
+done
+
+
+
+# Init the process
+#---------------------------------------------------------------------
+if [ "$rnv" != '' ]; then $ncmd $rnv $$;
+else $ncmd $ndv $$; fi
+
+if [ "$dstdir" != '' ]; then dstdir=$dstdir"/"; fi
+
+cd $pw
+
+xcmd="$acmd $aopt $dstdir$alias-$dt-$pal.$aext $excdirs $arcp"
+
+if [ "$preview" = 'y' ]; then
+    echo $xcmd
+else
+    $xcmd
+fi
+
+exit 0
+
+
