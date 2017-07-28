@@ -1,2 +1,43 @@
 # abt
 Austere Backup Tool
+
+
+Description
+---------------------------------------------------------------------
+Simple yet effective data archiving tool for UNIX/Linux servers
+
+
+
+Features
+---------------------------------------------------------------------
+- Portable across POSIX systems and standardized UNIX Shell
+- Automatic arive filename generation
+- Preview (simulation) mode for testing
+
+
+
+Installation
+---------------------------------------------------------------------
+git clone https://github.com/varnet/abt
+
+
+
+Usage
+---------------------------------------------------------------------
+abt: Usage: [-n] 19 [-x|-X] file [-o] dir dir dir...
+        -h            Show help
+        -a, --alias          Specify archive alias (default: hostname)
+        -D, --dstdir         Destination directory '/path/to/dir'
+        -n, --renice         Change the process priority
+        -o, --omitpath       Omit directory full path
+        -p, --preview        Preview resulting archiver command
+        -X, --exclude-from   Read exclusion from file
+        -x, --exclude        Exclude file or directory
+
+
+
+
+Reporting Bugs
+---------------------------------------------------------------------
+Use GitHub bug tracking system: 
+https://github.com/varnet/abf/issues
